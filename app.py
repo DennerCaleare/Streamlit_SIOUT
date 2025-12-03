@@ -136,6 +136,59 @@ if df is not None:
             else:
                 filtro_codigo = []
         
+        st.markdown("")
+        
+        # Terceira linha: Novos filtros (Uso, Material e Empreendedor)
+        st.markdown("<p style='text-align: center; margin-bottom: 5px;'><small>Filtros de Uso e Empreendedor</small></p>", unsafe_allow_html=True)
+        col_uso1, col_uso2, col_uso3 = st.columns(3)
+        
+        with col_uso1:
+            st.markdown("<p style='text-align: center; margin-bottom: 0;'><small>Finalidade de Uso (SNISB)</small></p>", unsafe_allow_html=True)
+            if 'USO_SNISB' in df.columns:
+                opcoes_uso = sorted(df['USO_SNISB'].dropna().unique().tolist())
+                filtro_uso = st.multiselect(
+                    "Finalidade de Uso",
+                    opcoes_uso,
+                    default=[],
+                    label_visibility="collapsed",
+                    placeholder="Selecione...",
+                    key="filtro_uso_snisb"
+                )
+            else:
+                filtro_uso = []
+        
+        with col_uso2:
+            st.markdown("<p style='text-align: center; margin-bottom: 0;'><small>Tipo de Material</small></p>", unsafe_allow_html=True)
+            if 'TIPO_DE_MATERIAL' in df.columns:
+                opcoes_material = sorted(df['TIPO_DE_MATERIAL'].dropna().unique().tolist())
+                filtro_material = st.multiselect(
+                    "Tipo de Material",
+                    opcoes_material,
+                    default=[],
+                    label_visibility="collapsed",
+                    placeholder="Selecione...",
+                    key="filtro_tipo_material"
+                )
+            else:
+                filtro_material = []
+        
+        with col_uso3:
+            st.markdown("<p style='text-align: center; margin-bottom: 0;'><small>Empreendedor</small></p>", unsafe_allow_html=True)
+            if 'EMPREENDEDOR_SNISB' in df.columns:
+                # Obter lista de empreendedores únicos
+                empreendedores_unicos = sorted(df['EMPREENDEDOR_SNISB'].dropna().astype(str).unique().tolist())
+                
+                filtro_empreendedor = st.multiselect(
+                    "Empreendedor",
+                    empreendedores_unicos,
+                    default=[],
+                    label_visibility="collapsed",
+                    placeholder="Selecione...",
+                    key="filtro_empreendedor_snisb"
+                )
+            else:
+                filtro_empreendedor = []
+        
         # Aplicar os filtros
         df_filtrado = df.copy()
         
@@ -172,6 +225,24 @@ if df is not None:
         if filtro_comparacao:
             df_filtrado = df_filtrado[df_filtrado['SITUACAO_COMPARACAO_SIOUT'].isin(filtro_comparacao)]
             filtros_ativos.append('SITUACAO_COMPARACAO_SIOUT')
+        
+        # Filtro de Uso SNISB
+        if filtro_uso:
+            if 'USO_SNISB' in df_filtrado.columns:
+                df_filtrado = df_filtrado[df_filtrado['USO_SNISB'].isin(filtro_uso)]
+                filtros_ativos.append('USO_SNISB')
+        
+        # Filtro de Tipo de Material
+        if filtro_material:
+            if 'TIPO_DE_MATERIAL' in df_filtrado.columns:
+                df_filtrado = df_filtrado[df_filtrado['TIPO_DE_MATERIAL'].isin(filtro_material)]
+                filtros_ativos.append('TIPO_DE_MATERIAL')
+        
+        # Filtro de Empreendedor
+        if filtro_empreendedor:
+            if 'EMPREENDEDOR_SNISB' in df_filtrado.columns:
+                df_filtrado = df_filtrado[df_filtrado['EMPREENDEDOR_SNISB'].astype(str).isin(filtro_empreendedor)]
+                filtros_ativos.append('EMPREENDEDOR_SNISB')
         
         # Definir texto baseado se há filtros ativos
         tem_filtros = len(filtros_ativos) > 0
@@ -405,13 +476,6 @@ if df is not None:
             st.markdown("<h3 style='text-align: center;'>Mapa de Localização</h3>", unsafe_allow_html=True)
             st.markdown("")
             
-            # Controle de camadas ANTES de criar o mapa
-            col_controle1, col_controle2, col_controle3 = st.columns([2, 1, 2])
-            with col_controle2:
-                exibir_pontos = st.checkbox("🔵 Exibir pontos das barragens", value=True, key="mostrar_pontos")
-            
-            st.markdown("")
-            
             # Verificar se existem colunas de latitude e longitude
             tem_coordenadas = 'LATITUDE' in df_filtrado.columns and 'LONGITUDE' in df_filtrado.columns
             
@@ -422,6 +486,10 @@ if df is not None:
                 for col in colunas_popup:
                     if col in df_filtrado.columns:
                         colunas_mapa.append(col)
+                
+                # Adicionar coluna POLIGONO_ANA se existir (para uso posterior)
+                if 'POLIGONO_ANA' in df_filtrado.columns:
+                    colunas_mapa.append('POLIGONO_ANA')
                 
                 df_mapa = df_filtrado[colunas_mapa].copy()
                 
@@ -444,19 +512,145 @@ if df is not None:
                     center_lat = df_mapa['latitude'].mean()
                     center_lon = df_mapa['longitude'].mean()
                     
-                    # Criar mapa Folium com imagem de satélite Esri
+                    # Criar mapa Folium com imagem de satélite Esri (como base fixa, sem aparecer no controle)
                     mapa = folium.Map(
                         location=[center_lat, center_lon],
                         zoom_start=7,
-                        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                        attr='Esri World Imagery'
+                        tiles=None  # Não usar tiles padrão
                     )
+                    
+                    # Adicionar tiles de satélite como base sem controle
+                    folium.TileLayer(
+                        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                        attr='Esri World Imagery',
+                        name='Satélite Esri',
+                        overlay=False,
+                        control=False  # Não mostrar no controle de camadas
+                    ).add_to(mapa)
+                    
+                    # Criar grupos de camadas para controle independente (apenas as camadas controláveis)
+                    grupo_poligonos = folium.FeatureGroup(name='🗺️ Polígonos ANA', show=True)
+                    grupo_pontos = folium.FeatureGroup(name='🔵 Pontos das Barragens', show=True)
+                    
+                    # Adicionar polígonos ANA ao grupo
+                    with st.spinner('Carregando polígonos ANA...'):
+                            from shapely import wkt
+                            import json
+                            
+                            # Obter polígonos únicos apenas dos registros filtrados
+                            poligonos_unicos = df_mapa[df_mapa['POLIGONO_ANA'].notna()]['POLIGONO_ANA'].unique()
+                            
+                            # Criar um único FeatureCollection para todos os polígonos (mais eficiente)
+                            features = []
+                            for poligono_wkt in poligonos_unicos:
+                                try:
+                                    # Converter WKT para geometria Shapely
+                                    geom = wkt.loads(poligono_wkt)
+                                    
+                                    # Simplificar geometria agressivamente para melhor performance
+                                    geom_simplified = geom.simplify(0.002, preserve_topology=True)
+                                    
+                                    # Criar feature GeoJSON
+                                    feature = {
+                                        "type": "Feature",
+                                        "geometry": geom_simplified.__geo_interface__,
+                                        "properties": {"tipo": "Polígono ANA"}
+                                    }
+                                    features.append(feature)
+                                except Exception:
+                                    # Ignorar polígonos com erro de parsing
+                                    continue
+                            
+                            # Adicionar todos os polígonos de uma vez como FeatureCollection
+                            if features:
+                                feature_collection = {
+                                    "type": "FeatureCollection",
+                                    "features": features
+                                }
+                                
+                                folium.GeoJson(
+                                    feature_collection,
+                                    style_function=lambda x: {
+                                        'fillColor': '#4A90E2',
+                                        'color': '#2E5C8A',
+                                        'weight': 1,
+                                        'fillOpacity': 0.45,
+                                        'interactive': False
+                                    }
+                                ).add_to(grupo_poligonos)
+                    
+                    # Adicionar grupo de polígonos ao mapa
+                    grupo_poligonos.add_to(mapa)
+                    
+                    # Adicionar pontos das barragens ao grupo
+                    with st.spinner('Carregando pontos das barragens...'):
+                            # Processar todos os pontos de uma vez (mais eficiente)
+                            for idx, row in df_mapa.iterrows():
+                                # Definir cor baseada na situação do cadastro SNISB
+                                situacao_cadastro = str(row.get('SITUACAO_CADASTRO_SNISB', '')).lower()
+                                situacao_comparacao = str(row.get('SITUACAO_COMPARACAO_SIOUT', '')).lower()
+                                
+                                # Hierarquia de cores:
+                                if 'descartado' in situacao_cadastro:
+                                    cor = '#DC143C'
+                                elif 'totalmente compatível' in situacao_comparacao:
+                                    cor = '#28A745'
+                                elif 'compatível parcialmente' in situacao_comparacao:
+                                    cor = '#FFC107'
+                                elif 'compatível apenas geograficamente' in situacao_comparacao:
+                                    cor = '#FF8C00'
+                                elif 'incompatível' in situacao_comparacao:
+                                    cor = '#8B0000'
+                                elif 'selecionado para validação' in situacao_cadastro:
+                                    cor = '#007BFF'
+                                else:
+                                    cor = '#808080'
+                                
+                                # Criar conteúdo do popup (simplificado)
+                                popup_html = f"""<div style='font-family: Arial; font-size: 11px; min-width: 200px;'>
+                                    <b>Código:</b> {row.get('CODIGO_SNISB', 'N/A')}<br>
+                                    <b>Cadastro SNISB:</b> {row.get('SITUACAO_CADASTRO_SNISB', 'N/A')}<br>
+                                    <b>Massa D'água:</b> {row.get('SITUACAO_MASSA_DAGUA', 'N/A')}<br>
+                                    <b>Comparação SIOUT:</b> {row.get('SITUACAO_COMPARACAO_SIOUT', 'N/A')}
+                                </div>"""
+                                
+                                folium.CircleMarker(
+                                    location=[row['latitude'], row['longitude']],
+                                    radius=5,
+                                    color='#FFFFFF',
+                                    fill=True,
+                                    fillColor=cor,
+                                    fillOpacity=0.7,
+                                    weight=1,
+                                    popup=folium.Popup(popup_html, max_width=250, lazy=True)
+                                ).add_to(grupo_pontos)
+                    
+                    # Adicionar grupo de pontos ao mapa
+                    grupo_pontos.add_to(mapa)
+                    
+                    # Adicionar controle de camadas (permite ligar/desligar sem recarregar)
+                    folium.LayerControl(position='topright', collapsed=False).add_to(mapa)
+                    
+                    # Adicionar CSS customizado para deixar o controle de camadas mais transparente
+                    custom_css = """
+                    <style>
+                    .leaflet-control-layers {
+                        background-color: rgba(255, 255, 255, 0.85) !important;
+                        border: 1px solid grey !important;
+                        border-radius: 5px !important;
+                    }
+                    .leaflet-control-layers-expanded {
+                        padding: 6px 8px 6px 6px !important;
+                    }
+                    </style>
+                    """
+                    mapa.get_root().html.add_child(folium.Element(custom_css))
                     
                     # Adicionar legenda
                     legenda_html = """
                     <div style="position: fixed; 
                                 bottom: 30px; right: 30px; width: 200px; 
-                                background-color: rgba(255, 255, 255, 0.85); z-index:9999; 
+                                background-color: rgba(255, 255, 255, 0.9); z-index:9999; 
                                 border:1px solid grey; border-radius: 5px;
                                 padding: 8px; font-size: 10px;
                                 font-family: Arial;">
@@ -466,60 +660,13 @@ if df is not None:
                         <p style="margin: 3px 0;"><span style="background-color: #FF8C00; width: 12px; height: 12px; display: inline-block; border-radius: 50%; border: 1px solid white;"></span> Compatível Geo</p>
                         <p style="margin: 3px 0;"><span style="background-color: #8B0000; width: 12px; height: 12px; display: inline-block; border-radius: 50%; border: 1px solid white;"></span> Incompatível</p>
                         <p style="margin: 3px 0;"><span style="background-color: #DC143C; width: 12px; height: 12px; display: inline-block; border-radius: 50%; border: 1px solid white;"></span> Descartado</p>
+                        <hr style="margin: 6px 0; border: 0; border-top: 1px solid #ccc;">
+                        <p style="margin: 3px 0;"><span style="background-color: #4A90E2; width: 12px; height: 12px; display: inline-block; border: 1px solid #2E5C8A;"></span> Polígonos ANA</p>
                     </div>
                     """
                     mapa.get_root().html.add_child(folium.Element(legenda_html))
                     
-                    # Adicionar marcadores com popup e cores por situação (somente se checkbox estiver marcado)
-                    if exibir_pontos:
-                        for idx, row in df_mapa.iterrows():
-                            # Definir cor baseada na situação do cadastro SNISB
-                            situacao_cadastro = str(row.get('SITUACAO_CADASTRO_SNISB', '')).lower()
-                            situacao_comparacao = str(row.get('SITUACAO_COMPARACAO_SIOUT', '')).lower()
-                            
-                            # Hierarquia de cores:
-                            # 1. Descartados (vermelho)
-                            # 2. Totalmente compatível (verde)
-                            # 3. Parcialmente compatível (amarelo)
-                            # 4. Compatível geograficamente (laranja)
-                            # 5. Incompatível (vermelho escuro)
-                            # 6. Selecionado para validação (azul)
-                            
-                            if 'descartado' in situacao_cadastro:
-                                cor = '#DC143C'  # Vermelho escuro (descartados)
-                            elif 'totalmente compatível' in situacao_comparacao:
-                                cor = '#28A745'  # Verde (totalmente compatível)
-                            elif 'compatível parcialmente' in situacao_comparacao:
-                                cor = '#FFC107'  # Amarelo (parcialmente compatível)
-                            elif 'compatível apenas geograficamente' in situacao_comparacao:
-                                cor = '#FF8C00'  # Laranja (só geografia)
-                            elif 'incompatível' in situacao_comparacao:
-                                cor = '#8B0000'  # Vermelho muito escuro (incompatível)
-                            elif 'selecionado para validação' in situacao_cadastro:
-                                cor = '#007BFF'  # Azul (selecionados)
-                            else:
-                                cor = '#808080'  # Cinza (sem classificação)
-                            
-                            # Criar conteúdo do popup
-                            popup_html = "<div style='font-family: Arial; font-size: 12px;'>"
-                            popup_html += f"<b>Código SNISB:</b> {row.get('CODIGO_SNISB', 'N/A')}<br>"
-                            popup_html += f"<b>Situação Cadastro SNISB:</b> {row.get('SITUACAO_CADASTRO_SNISB', 'N/A')}<br>"
-                            popup_html += f"<b>Situação Massa D'água:</b> {row.get('SITUACAO_MASSA_DAGUA', 'N/A')}<br>"
-                            popup_html += f"<b>Situação Comparação SIOUT:</b> {row.get('SITUACAO_COMPARACAO_SIOUT', 'N/A')}"
-                            popup_html += "</div>"
-                            
-                            folium.CircleMarker(
-                                location=[row['latitude'], row['longitude']],
-                                radius=6,
-                                color='#FFFFFF',
-                                fill=True,
-                                fillColor=cor,
-                                fillOpacity=0.8,
-                                weight=1,
-                                popup=folium.Popup(popup_html, max_width=300)
-                            ).add_to(mapa)
-                    
-                    # Exibir mapa (returned_objects desabilitado para evitar recarregamento)
+                    # Exibir mapa (sem captura de eventos para manter fluidez)
                     st_folium(mapa, width=None, height=650, returned_objects=[])
                 else:
                     st.info("Nenhuma coordenada válida encontrada nos dados filtrados.")
@@ -559,31 +706,49 @@ if df is not None:
             st.markdown("""
             ### Descrição das Colunas
             
-            **CÓDIGO SNISB**: Código único de identificação da barragem no Sistema Nacional de Informações sobre Segurança de Barragens.
+            **CODIGO_SNISB**: Código único de identificação da barragem no Sistema Nacional de Informações sobre Segurança de Barragens.
             
-            **COD BARRAGEM NA ENT FISCAL**: Código da barragem na entidade fiscalizadora (formato: AAAA/NNN.NNN).
+            **DATA_DO_CADASTRO**: Data em que o registro foi cadastrado no sistema SNISB.
             
-            **AUTORIZAÇÃO Nº**: Número da autorização/portaria concedida (formato: NNN.NNN/AAAA).
+            **CODIGO_BARRAGEM_ENTIDADE**: Código da barragem na entidade fiscalizadora.
             
-            **DATA DO CADASTRO**: Data em que o registro foi cadastrado no sistema.
+            **CODIGO_SIOUT**: Código da barragem no Sistema de Outorgas (SIOUT-RS).
             
-            **ALTURA MÁXIMA FUNDAÇÃO**: Altura máxima da barragem medida desde a fundação (em metros).
+            **AUTORIZACAO_NUM**: Número da autorização/portaria concedida para a barragem no SNISB.
             
-            **ALTURA MÁXIMA NÍVEL TERRENO**: Altura máxima da barragem medida desde o nível do terreno (em metros).
+            **AUTORIZACAO_SIOUT**: Número da autorização/portaria no Sistema de Outorgas (SIOUT-RS).
             
-            **CAPACIDADE TOTAL**: Capacidade total de armazenamento da barragem (em m³).
+            **USO_SNISB**: Finalidade de uso da água/barragem registrada no SNISB (Irrigação, Dessedentação Animal, Industrial, Abastecimento Humano, etc).
+            
+            **USO_SIOUT**: Finalidade de uso da água/barragem registrada no SIOUT-RS.
+            
+            **EMPREENDEDOR_SNISB**: Nome do responsável/proprietário da barragem conforme cadastro no SNISB.
+            
+            **EMPREENDEDOR_SIOUT**: Nome do responsável/proprietário da barragem conforme cadastro no SIOUT-RS.
+            
+            **SITUACAO_CADASTRO_SNISB**: Status do registro após aplicação dos filtros de elegibilidade (Selecionado, Descartado por duplicidade, Descartado por hierarquia).
+            
+            **SITUACAO_COMPARACAO_SIOUT**: Resultado da comparação entre os dados SNISB e SIOUT (Totalmente compatível, Compatível parcialmente, Compatível apenas geograficamente, Incompatível).
+            
+            **SITUACAO_MASSA_DAGUA**: Indica se a barragem está localizada dentro de uma massa d'água mapeada pela ANA (Compatível com polígono ANA, Não aplicado).
+            
+            **GID**: Identificador geográfico único do registro.
+            
+            **ALTURA_MAX_FUNDACAO**: Altura máxima da barragem medida desde a fundação (em metros).
+            
+            **ALTURA_MAX_NIVEL_TERRENO**: Altura máxima da barragem medida desde o nível do terreno (em metros).
+            
+            **CAPACIDADE_TOTAL**: Capacidade total de armazenamento da barragem (em metros cúbicos - m³).
             
             **COROAMENTO**: Largura da crista/topo da barragem (em metros).
             
-            **TIPO DE MATERIAL**: Material utilizado na construção da barragem (concreto, terra, enrocamento, etc).
+            **TIPO_DE_MATERIAL**: Material utilizado na construção da barragem (Terra, Concreto, CCR, etc).
             
-            **LATITUDE / LONGITUDE**: Coordenadas geográficas da localização da barragem.
+            **LATITUDE / LONGITUDE**: Coordenadas geográficas da localização da barragem (sistema SIRGAS 2000).
             
-            **PONTO_GEO**: Geometria espacial da barragem em formato POINT(longitude latitude) - SRID 4674 (SIRGAS 2000).
+            **ID_SIOUT**: Identificador único do registro no Sistema de Outorgas (SIOUT-RS).
             
-            **ID_PROCESSO_CADASTRO_SIOUT**: Identificador do processo no Sistema de Outorgas (SIOUT).
-            
-            **CODIGO_PROCESSO_CADASTRO_SIOUT**: Código do processo de cadastro no SIOUT.
+            **POLIGONO_ANA**: Geometria do polígono da massa d'água da ANA em formato WKT (Well-Known Text) onde a barragem está localizada.
             """)
         
         with st.expander("Situações e Status"):
@@ -635,6 +800,11 @@ if df is not None:
             - **Situação Comparação SIOUT**: Nível de compatibilidade entre SNISB e SIOUT
             - **Código SNISB**: Busca específica por código da barragem (com autocompletar)
             
+            **Filtros de Uso e Empreendedor**
+            - **Finalidade de Uso (SNISB)**: Tipo de uso da água (Irrigação, Dessedentação Animal, Industrial, Abastecimento Humano, etc)
+            - **Tipo de Material**: Material de construção da barragem (Terra, Concreto, CCR, Sem Informação)
+            - **Empreendedor**: Proprietário ou responsável pela barragem (com busca)
+            
             **Dica**: Combine múltiplos filtros para análises específicas. Todos os filtros funcionam em conjunto.
             """)
         
@@ -659,8 +829,11 @@ if df is not None:
             
             **4. Mapa Interativo**
             - Localizado no final da página
-            - Mostra todas as barragens dos dados filtrados
-            - Zoom e navegação disponíveis
+            - Mostra todas as barragens e polígonos ANA dos dados filtrados
+            - Use o controle de camadas (canto superior direito) para exibir/ocultar pontos e polígonos
+            - Zoom e navegação disponíveis (arraste, scroll, botões +/-)
+            - Clique nos pontos para ver informações detalhadas
+            - Imagem de satélite Esri como base do mapa
             
             **5. Download de Dados**
             - Clique no botão "Baixar Dados" (centralizado)
