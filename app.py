@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # Título principal
-st.markdown("<h1 style='text-align: center;'>Sistema de Outorgas de Água - Rio Grande do Sul</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>Ferramenta de Comparação de Registros - SNISB vs SIOUT-RS</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
 # Função para carregar os dados com cache
@@ -21,7 +21,7 @@ st.markdown("---")
 def carregar_dados():
     """Carrega o arquivo Excel e retorna um DataFrame"""
     try:
-        arquivo_path = os.path.join(os.path.dirname(__file__), "REGISTROS_SNISB_EM_POLIGONOS_ANA_RS.xlsx")
+        arquivo_path = os.path.join(os.path.dirname(__file__), "RELATORIO_FINAL_SNISB_SIOUT.xlsx")
         return pd.read_excel(arquivo_path)
     except Exception as e:
         st.error(f"Erro ao carregar o arquivo: {e}")
@@ -43,10 +43,10 @@ if df is not None:
         col_data1, col_data2, col_data3 = st.columns([1, 1, 1])
         
         # Converter coluna de data se existir
-        if 'DATA DO CADASTRO' in df.columns:
-            df['DATA DO CADASTRO'] = pd.to_datetime(df['DATA DO CADASTRO'], errors='coerce')
-            data_min = df['DATA DO CADASTRO'].min()
-            data_max = df['DATA DO CADASTRO'].max()
+        if 'DATA_DO_CADASTRO' in df.columns:
+            df['DATA_DO_CADASTRO'] = pd.to_datetime(df['DATA_DO_CADASTRO'], errors='coerce')
+            data_min = df['DATA_DO_CADASTRO'].min()
+            data_max = df['DATA_DO_CADASTRO'].max()
             
             with col_data2:
                 col_inicio, col_fim = st.columns(2)
@@ -79,58 +79,62 @@ if df is not None:
         with col_fis1:
             st.markdown("<p style='text-align: center; margin-bottom: 0;'><small>Situação Cadastro SNISB</small></p>", unsafe_allow_html=True)
             if 'SITUACAO_CADASTRO_SNISB' in df.columns:
-                opcoes_cadastro = ['Todos'] + sorted(df['SITUACAO_CADASTRO_SNISB'].dropna().unique().tolist())
-                filtro_cadastro = st.selectbox(
+                opcoes_cadastro = sorted(df['SITUACAO_CADASTRO_SNISB'].dropna().unique().tolist())
+                filtro_cadastro = st.multiselect(
                     "Situação Cadastro SNISB",
                     opcoes_cadastro,
-                    index=0,
-                    label_visibility="collapsed"
+                    default=[],
+                    label_visibility="collapsed",
+                    placeholder="Selecione..."
                 )
             else:
-                filtro_cadastro = 'Todos'
+                filtro_cadastro = []
         
         with col_fis2:
             st.markdown("<p style='text-align: center; margin-bottom: 0;'><small>Situação Massa D'água</small></p>", unsafe_allow_html=True)
             if 'SITUACAO_MASSA_DAGUA' in df.columns:
-                opcoes_massa = ['Todos'] + sorted(df['SITUACAO_MASSA_DAGUA'].dropna().unique().tolist())
-                filtro_massa = st.selectbox(
+                opcoes_massa = sorted(df['SITUACAO_MASSA_DAGUA'].dropna().unique().tolist())
+                filtro_massa = st.multiselect(
                     "Situação Massa D'água",
                     opcoes_massa,
-                    index=0,
-                    label_visibility="collapsed"
+                    default=[],
+                    label_visibility="collapsed",
+                    placeholder="Selecione..."
                 )
             else:
-                filtro_massa = 'Todos'
+                filtro_massa = []
         
         with col_fis3:
             st.markdown("<p style='text-align: center; margin-bottom: 0;'><small>Situação Comparação SIOUT</small></p>", unsafe_allow_html=True)
             if 'SITUACAO_COMPARACAO_SIOUT' in df.columns:
-                opcoes_comparacao = ['Todos'] + sorted(df['SITUACAO_COMPARACAO_SIOUT'].dropna().unique().tolist())
-                filtro_comparacao = st.selectbox(
+                opcoes_comparacao = sorted(df['SITUACAO_COMPARACAO_SIOUT'].dropna().unique().tolist())
+                filtro_comparacao = st.multiselect(
                     "Situação Comparação SIOUT",
                     opcoes_comparacao,
-                    index=0,
-                    label_visibility="collapsed"
+                    default=[],
+                    label_visibility="collapsed",
+                    placeholder="Selecione..."
                 )
             else:
-                filtro_comparacao = 'Todos'
+                filtro_comparacao = []
         
         with col_fis4:
             st.markdown("<p style='text-align: center; margin-bottom: 0;'><small>Código SNISB</small></p>", unsafe_allow_html=True)
-            if 'CÓDIGO SNISB' in df.columns:
+            if 'CODIGO_SNISB' in df.columns:
                 # Obter lista de códigos únicos
-                codigos_unicos = sorted(df['CÓDIGO SNISB'].dropna().astype(str).unique().tolist())
+                codigos_unicos = sorted(df['CODIGO_SNISB'].dropna().astype(str).unique().tolist())
                 
-                # Campo de busca com autocompletar
-                filtro_codigo = st.selectbox(
+                # Campo de busca com multiseleção
+                filtro_codigo = st.multiselect(
                     "Código SNISB",
-                    ['Todos'] + codigos_unicos,
-                    index=0,
+                    codigos_unicos,
+                    default=[],
                     label_visibility="collapsed",
+                    placeholder="Selecione...",
                     key="filtro_codigo_snisb"
                 )
             else:
-                filtro_codigo = 'Todos'
+                filtro_codigo = []
         
         # Aplicar os filtros
         df_filtrado = df.copy()
@@ -139,34 +143,34 @@ if df is not None:
         filtros_ativos = []
         
         # Filtro de data
-        if 'DATA DO CADASTRO' in df.columns:
+        if 'DATA_DO_CADASTRO' in df.columns:
             data_inicio_dt = pd.to_datetime(data_inicio)
             data_fim_dt = pd.to_datetime(data_fim)
             
             # Verificar se o filtro de data está ativo (diferente do range completo)
             if data_inicio_dt > data_min or data_fim_dt < data_max:
                 df_filtrado = df_filtrado[
-                    (df_filtrado['DATA DO CADASTRO'] >= data_inicio_dt) & 
-                    (df_filtrado['DATA DO CADASTRO'] <= data_fim_dt)
+                    (df_filtrado['DATA_DO_CADASTRO'] >= data_inicio_dt) & 
+                    (df_filtrado['DATA_DO_CADASTRO'] <= data_fim_dt)
                 ]
-                filtros_ativos.append('DATA DO CADASTRO')
+                filtros_ativos.append('DATA_DO_CADASTRO')
         
         # Filtro de Código SNISB
-        if filtro_codigo != 'Todos':
-            if 'CÓDIGO SNISB' in df_filtrado.columns:
-                df_filtrado = df_filtrado[df_filtrado['CÓDIGO SNISB'].astype(str) == filtro_codigo]
-                filtros_ativos.append('CÓDIGO SNISB')
+        if filtro_codigo:
+            if 'CODIGO_SNISB' in df_filtrado.columns:
+                df_filtrado = df_filtrado[df_filtrado['CODIGO_SNISB'].astype(str).isin(filtro_codigo)]
+                filtros_ativos.append('CODIGO_SNISB')
         
-        if filtro_cadastro != 'Todos':
-            df_filtrado = df_filtrado[df_filtrado['SITUACAO_CADASTRO_SNISB'] == filtro_cadastro]
+        if filtro_cadastro:
+            df_filtrado = df_filtrado[df_filtrado['SITUACAO_CADASTRO_SNISB'].isin(filtro_cadastro)]
             filtros_ativos.append('SITUACAO_CADASTRO_SNISB')
         
-        if filtro_massa != 'Todos':
-            df_filtrado = df_filtrado[df_filtrado['SITUACAO_MASSA_DAGUA'] == filtro_massa]
+        if filtro_massa:
+            df_filtrado = df_filtrado[df_filtrado['SITUACAO_MASSA_DAGUA'].isin(filtro_massa)]
             filtros_ativos.append('SITUACAO_MASSA_DAGUA')
         
-        if filtro_comparacao != 'Todos':
-            df_filtrado = df_filtrado[df_filtrado['SITUACAO_COMPARACAO_SIOUT'] == filtro_comparacao]
+        if filtro_comparacao:
+            df_filtrado = df_filtrado[df_filtrado['SITUACAO_COMPARACAO_SIOUT'].isin(filtro_comparacao)]
             filtros_ativos.append('SITUACAO_COMPARACAO_SIOUT')
         
         # Definir texto baseado se há filtros ativos
@@ -222,12 +226,12 @@ if df is not None:
                 colunas_estilo.append('SITUACAO_COMPARACAO_SIOUT')
             
             if colunas_estilo:
-                styled_df = df_pagina.style.applymap(colorir_situacao, subset=colunas_estilo)
-                st.dataframe(styled_df, use_container_width=True, height=600, column_config={
+                styled_df = df_pagina.style.map(colorir_situacao, subset=colunas_estilo)
+                st.dataframe(styled_df, width='stretch', height=600, column_config={
                     col: st.column_config.TextColumn(width="medium") for col in df_pagina.columns
                 })
             else:
-                st.dataframe(df_pagina, use_container_width=True, height=600, column_config={
+                st.dataframe(df_pagina, width='stretch', height=600, column_config={
                     col: st.column_config.TextColumn(width="medium") for col in df_pagina.columns
                 })
             
@@ -401,53 +405,39 @@ if df is not None:
             st.markdown("<h3 style='text-align: center;'>Mapa de Localização</h3>", unsafe_allow_html=True)
             st.markdown("")
             
-            # Verificar se existe coluna PONTO_GEO
-            col_ponto = None
-            for col in df_filtrado.columns:
-                if 'PONTO_GEO' in col.upper():
-                    col_ponto = col
-                    break
+            # Controle de camadas ANTES de criar o mapa
+            col_controle1, col_controle2, col_controle3 = st.columns([2, 1, 2])
+            with col_controle2:
+                exibir_pontos = st.checkbox("🔵 Exibir pontos das barragens", value=True, key="mostrar_pontos")
             
-            if col_ponto:
-                # Preparar dados do mapa extraindo coordenadas de PONTO_GEO
-                # Manter todas as colunas necessárias para o popup
-                colunas_mapa = [col_ponto]
-                colunas_popup = ['CÓDIGO SNISB', 'SITUACAO_CADASTRO_SNISB', 'SITUACAO_MASSA_DAGUA', 'SITUACAO_COMPARACAO_SIOUT']
+            st.markdown("")
+            
+            # Verificar se existem colunas de latitude e longitude
+            tem_coordenadas = 'LATITUDE' in df_filtrado.columns and 'LONGITUDE' in df_filtrado.columns
+            
+            if tem_coordenadas:
+                # Preparar dados do mapa usando colunas LATITUDE e LONGITUDE diretamente
+                colunas_mapa = ['LATITUDE', 'LONGITUDE']
+                colunas_popup = ['CODIGO_SNISB', 'SITUACAO_CADASTRO_SNISB', 'SITUACAO_MASSA_DAGUA', 'SITUACAO_COMPARACAO_SIOUT']
                 for col in colunas_popup:
                     if col in df_filtrado.columns:
                         colunas_mapa.append(col)
                 
                 df_mapa = df_filtrado[colunas_mapa].copy()
-                df_mapa = df_mapa.dropna(subset=[col_ponto])
                 
-                # Extrair latitude e longitude do formato POINT(lon lat)
-                def extrair_coordenadas(ponto_wkt):
-                    """Extrai lat/lon de string POINT(longitude latitude)"""
-                    try:
-                        if pd.isna(ponto_wkt):
-                            return None, None
-                        # Remove "POINT(" e ")" e separa as coordenadas
-                        coords = str(ponto_wkt).replace('POINT(', '').replace(')', '').split()
-                        if len(coords) == 2:
-                            lon = float(coords[0])
-                            lat = float(coords[1])
-                            return lat, lon
-                        return None, None
-                    except:
-                        return None, None
+                # Renomear para lowercase para consistência
+                df_mapa = df_mapa.rename(columns={'LATITUDE': 'latitude', 'LONGITUDE': 'longitude'})
                 
-                # Aplicar extração
-                df_mapa[['latitude', 'longitude']] = df_mapa[col_ponto].apply(
-                    lambda x: pd.Series(extrair_coordenadas(x))
-                )
-                
-                # Remover valores inválidos
-                df_mapa = df_mapa.dropna(subset=['latitude', 'longitude'])
-                
-                # Converter para numérico
+                # Converter para numérico e remover valores inválidos
                 df_mapa['latitude'] = pd.to_numeric(df_mapa['latitude'], errors='coerce')
                 df_mapa['longitude'] = pd.to_numeric(df_mapa['longitude'], errors='coerce')
                 df_mapa = df_mapa.dropna(subset=['latitude', 'longitude'])
+                
+                # Validar coordenadas do Brasil (aproximado)
+                df_mapa = df_mapa[
+                    (df_mapa['latitude'] >= -34) & (df_mapa['latitude'] <= 6) &
+                    (df_mapa['longitude'] >= -74) & (df_mapa['longitude'] <= -28)
+                ]
                 
                 if len(df_mapa) > 0:
                     # Calcular centro do mapa
@@ -480,60 +470,61 @@ if df is not None:
                     """
                     mapa.get_root().html.add_child(folium.Element(legenda_html))
                     
-                    # Adicionar marcadores com popup e cores por situação
-                    for idx, row in df_mapa.iterrows():
-                        # Definir cor baseada na situação do cadastro SNISB
-                        situacao_cadastro = str(row.get('SITUACAO_CADASTRO_SNISB', '')).lower()
-                        situacao_comparacao = str(row.get('SITUACAO_COMPARACAO_SIOUT', '')).lower()
-                        
-                        # Hierarquia de cores:
-                        # 1. Descartados (vermelho)
-                        # 2. Totalmente compatível (verde)
-                        # 3. Parcialmente compatível (amarelo)
-                        # 4. Compatível geograficamente (laranja)
-                        # 5. Incompatível (vermelho escuro)
-                        # 6. Selecionado para validação (azul)
-                        
-                        if 'descartado' in situacao_cadastro:
-                            cor = '#DC143C'  # Vermelho escuro (descartados)
-                        elif 'totalmente compatível' in situacao_comparacao:
-                            cor = '#28A745'  # Verde (totalmente compatível)
-                        elif 'compatível parcialmente' in situacao_comparacao:
-                            cor = '#FFC107'  # Amarelo (parcialmente compatível)
-                        elif 'compatível apenas geograficamente' in situacao_comparacao:
-                            cor = '#FF8C00'  # Laranja (só geografia)
-                        elif 'incompatível' in situacao_comparacao:
-                            cor = '#8B0000'  # Vermelho muito escuro (incompatível)
-                        elif 'selecionado para validação' in situacao_cadastro:
-                            cor = '#007BFF'  # Azul (selecionados)
-                        else:
-                            cor = '#808080'  # Cinza (sem classificação)
-                        
-                        # Criar conteúdo do popup
-                        popup_html = "<div style='font-family: Arial; font-size: 12px;'>"
-                        popup_html += f"<b>Código SNISB:</b> {row.get('CÓDIGO SNISB', 'N/A')}<br>"
-                        popup_html += f"<b>Situação Cadastro SNISB:</b> {row.get('SITUACAO_CADASTRO_SNISB', 'N/A')}<br>"
-                        popup_html += f"<b>Situação Massa D'água:</b> {row.get('SITUACAO_MASSA_DAGUA', 'N/A')}<br>"
-                        popup_html += f"<b>Situação Comparação SIOUT:</b> {row.get('SITUACAO_COMPARACAO_SIOUT', 'N/A')}"
-                        popup_html += "</div>"
-                        
-                        folium.CircleMarker(
-                            location=[row['latitude'], row['longitude']],
-                            radius=6,
-                            color='#FFFFFF',
-                            fill=True,
-                            fillColor=cor,
-                            fillOpacity=0.8,
-                            weight=1,
-                            popup=folium.Popup(popup_html, max_width=300)
-                        ).add_to(mapa)
+                    # Adicionar marcadores com popup e cores por situação (somente se checkbox estiver marcado)
+                    if exibir_pontos:
+                        for idx, row in df_mapa.iterrows():
+                            # Definir cor baseada na situação do cadastro SNISB
+                            situacao_cadastro = str(row.get('SITUACAO_CADASTRO_SNISB', '')).lower()
+                            situacao_comparacao = str(row.get('SITUACAO_COMPARACAO_SIOUT', '')).lower()
+                            
+                            # Hierarquia de cores:
+                            # 1. Descartados (vermelho)
+                            # 2. Totalmente compatível (verde)
+                            # 3. Parcialmente compatível (amarelo)
+                            # 4. Compatível geograficamente (laranja)
+                            # 5. Incompatível (vermelho escuro)
+                            # 6. Selecionado para validação (azul)
+                            
+                            if 'descartado' in situacao_cadastro:
+                                cor = '#DC143C'  # Vermelho escuro (descartados)
+                            elif 'totalmente compatível' in situacao_comparacao:
+                                cor = '#28A745'  # Verde (totalmente compatível)
+                            elif 'compatível parcialmente' in situacao_comparacao:
+                                cor = '#FFC107'  # Amarelo (parcialmente compatível)
+                            elif 'compatível apenas geograficamente' in situacao_comparacao:
+                                cor = '#FF8C00'  # Laranja (só geografia)
+                            elif 'incompatível' in situacao_comparacao:
+                                cor = '#8B0000'  # Vermelho muito escuro (incompatível)
+                            elif 'selecionado para validação' in situacao_cadastro:
+                                cor = '#007BFF'  # Azul (selecionados)
+                            else:
+                                cor = '#808080'  # Cinza (sem classificação)
+                            
+                            # Criar conteúdo do popup
+                            popup_html = "<div style='font-family: Arial; font-size: 12px;'>"
+                            popup_html += f"<b>Código SNISB:</b> {row.get('CODIGO_SNISB', 'N/A')}<br>"
+                            popup_html += f"<b>Situação Cadastro SNISB:</b> {row.get('SITUACAO_CADASTRO_SNISB', 'N/A')}<br>"
+                            popup_html += f"<b>Situação Massa D'água:</b> {row.get('SITUACAO_MASSA_DAGUA', 'N/A')}<br>"
+                            popup_html += f"<b>Situação Comparação SIOUT:</b> {row.get('SITUACAO_COMPARACAO_SIOUT', 'N/A')}"
+                            popup_html += "</div>"
+                            
+                            folium.CircleMarker(
+                                location=[row['latitude'], row['longitude']],
+                                radius=6,
+                                color='#FFFFFF',
+                                fill=True,
+                                fillColor=cor,
+                                fillOpacity=0.8,
+                                weight=1,
+                                popup=folium.Popup(popup_html, max_width=300)
+                            ).add_to(mapa)
                     
                     # Exibir mapa (returned_objects desabilitado para evitar recarregamento)
-                    st_folium(mapa, width=None, height=650, use_container_width=True, returned_objects=[])
+                    st_folium(mapa, width=None, height=650, returned_objects=[])
                 else:
                     st.info("Nenhuma coordenada válida encontrada nos dados filtrados.")
             else:
-                st.info("Coluna PONTO_GEO não encontrada no dataset.")
+                st.info("Colunas LATITUDE e LONGITUDE não encontradas no dataset.")
         else:
             st.warning("Nenhum registro encontrado com os filtros selecionados.")
     
@@ -542,7 +533,29 @@ if df is not None:
         st.markdown("")
         
         # Criar expanders para cada seção
-        with st.expander("Colunas do Dataset", expanded=True):
+        with st.expander("Critérios de Elegibilidade", expanded=True):
+            st.markdown("""
+            ### Cadastros Elegíveis para Análise
+            
+            Os registros considerados válidos para análise devem atender aos seguintes critérios:
+            
+            **Tipo de Estrutura:**
+            - Apenas Barragem
+            - Apenas Açude
+            
+            **Classificação do Cadastro:**
+            - Registros com classificação "Cadastro" devem possuir número de autorização/outorga válido
+            - Demais classificações diferentes de "Cadastro" são aceitas
+            
+            **Finalidades de Uso:**
+            - São excluídas estruturas destinadas exclusivamente a:
+              - Mineração
+              - Aproveitamento hidrelétrico
+              - Aquicultura/Piscicultura
+            - Demais finalidades de uso são consideradas elegíveis
+            """)
+        
+        with st.expander("Colunas do Dataset"):
             st.markdown("""
             ### Descrição das Colunas
             
@@ -628,7 +641,7 @@ if df is not None:
         with st.expander("Dicas de Uso"):
             st.markdown("""
             ### Como usar o sistema
-            x
+            
             **1. Filtros de Data**
             - Clique nos campos de data para abrir o calendário
             - Escolha o período desejado (data inicial e final)
@@ -694,14 +707,6 @@ if df is not None:
             **P: Posso voltar para o dataset completo depois de filtrar?**
             R: Sim, selecione "Todos" em cada filtro ou recarregue a página (F5).
             """)
-    
-    # Rodapé
-    st.markdown("---")
-    st.markdown("""
-    <div style='text-align: center; color: gray;'>
-        <small>Arquivo: REGISTROS_SNISB_EM_POLIGONOS_ANA_RS.xlsx | Última atualização: Novembro 2025</small>
-    </div>
-    """, unsafe_allow_html=True)
 
 else:
-    st.error("Não foi possível carregar os dados. Verifique se o arquivo 'REGISTROS_SNISB_EM_POLIGONOS_ANA_RS.xlsx' está na pasta correta.")
+    st.error("Não foi possível carregar os dados. Verifique se o arquivo 'RELATORIO_FINAL_SNISB_SIOUT.xlsx' está na pasta correta.")
