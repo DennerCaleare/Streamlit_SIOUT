@@ -20,14 +20,26 @@ st.markdown("---")
 # Função para carregar os dados com cache
 @st.cache_data
 def carregar_dados():
-    """Carrega o arquivo Excel e retorna um DataFrame"""
+    """Carrega o arquivo de dados (CSV ou Excel) e retorna um DataFrame"""
     try:
-        arquivo_path = os.path.join(os.path.dirname(__file__), "RELATORIO_FINAL_SNISB_SIOUT.xlsx")
+        # Tentar carregar CSV primeiro (sem limite de caracteres)
+        csv_path = os.path.join(os.path.dirname(__file__), "RELATORIO_FINAL_SNISB_SIOUT.csv")
+        xlsx_path = os.path.join(os.path.dirname(__file__), "RELATORIO_FINAL_SNISB_SIOUT.xlsx")
+        
         # Configurar pandas para não truncar strings longas
         pd.set_option('display.max_colwidth', None)
-        # Garantir que a coluna POLIGONO_ANA seja lida como string completa
-        df = pd.read_excel(arquivo_path, dtype={'POLIGONO_ANA': str})
-        return df
+        
+        if os.path.exists(csv_path):
+            # Carregar CSV (preferencial - sem limite de 32.767 caracteres)
+            df = pd.read_csv(csv_path, dtype={'POLIGONO_ANA': str}, encoding='utf-8-sig')
+            return df
+        elif os.path.exists(xlsx_path):
+            # Fallback para Excel (pode ter polígonos truncados)
+            df = pd.read_excel(xlsx_path, dtype={'POLIGONO_ANA': str})
+            return df
+        else:
+            st.error("Arquivo de dados não encontrado. Procure por RELATORIO_FINAL_SNISB_SIOUT.csv ou .xlsx")
+            return None
     except Exception as e:
         st.error(f"Erro ao carregar o arquivo: {e}")
         return None
@@ -926,7 +938,7 @@ if df is not None:
             """)
 
 else:
-    st.error("Não foi possível carregar os dados. Verifique se o arquivo 'RELATORIO_FINAL_SNISB_SIOUT.xlsx' está na pasta correta.")
+    st.error("Não foi possível carregar os dados. Verifique se o arquivo 'RELATORIO_FINAL_SNISB_SIOUT.csv' ou 'RELATORIO_FINAL_SNISB_SIOUT.xlsx' está na pasta correta.")
 
 # Rodapé com logo Zetta
 st.markdown("")

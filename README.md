@@ -1,101 +1,169 @@
-﻿# Dashboard SIOUT-RS - Análise de Barragens
+﻿# 🌊 Ferramenta de Comparação de Registros - SNISB vs SIOUT-RS
 
-Aplicação Streamlit para análise e visualização integrada de dados de barragens do SNISB (Sistema Nacional de Informações sobre Segurança de Barragens) e SIOUT (Sistema de Outorgas de Água do Rio Grande do Sul).
+Aplicação web desenvolvida em Streamlit para análise e visualização integrada de dados de barragens do SNISB (Sistema Nacional de Informações sobre Segurança de Barragens) e SIOUT-RS (Sistema de Outorgas de Água do Rio Grande do Sul).
 
-## Sobre o Sistema
+## 📋 Sobre o Sistema
 
-Este dashboard realiza o cruzamento de dados entre:
+Este dashboard realiza o cruzamento e comparação de dados entre:
 
-- **SNISB**: Base nacional de barragens gerenciada pela ANA
+- **SNISB**: Base nacional de barragens gerenciada pela ANA (Agência Nacional de Águas)
 - **SIOUT-RS**: Sistema estadual de outorgas de recursos hídricos do Rio Grande do Sul
+- **Polígonos ANA**: Massas d'água mapeadas pela ANA
 
-O objetivo é identificar barragens cadastradas nacionalmente que possuem (ou deveriam possuir) autorização estadual de uso de recursos hídricos.
+O objetivo é identificar barragens cadastradas no SNISB que possuem (ou deveriam possuir) autorização estadual de uso de recursos hídricos, analisando compatibilidade geográfica e cadastral.
 
-## Como executar
+## 🚀 Como Executar
 
-1. Instale as dependências:
+### Localmente
 
+1. Clone o repositório:
+```bash
+git clone https://github.com/DennerCaleare/Streamlit_SIOUT.git
+cd Streamlit_SIOUT
+```
+
+2. Instale as dependências:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Execute o aplicativo:
-
+3. Execute o aplicativo:
 ```bash
 streamlit run app.py
 ```
 
-3. O aplicativo abrirá automaticamente no navegador em `http://localhost:8501`
+4. O aplicativo abrirá automaticamente no navegador em `http://localhost:8501`
 
-## Estrutura de Arquivos
+### Deploy na Nuvem
 
-- `app.py` - Aplicação principal do dashboard
-- `adicionar_coluna_point.py` - Script para adicionar geometria POINT ao dataset
-- `REGISTROS_SNISB_EM_POLIGONOS_ANA_RS.xlsx` - Base de dados com 4.698 registros
-- `requirements.txt` - Dependências do projeto
-- `.env` - Credenciais do banco de dados (não versionado)
-- `.gitignore` - Arquivos ignorados pelo Git
+O aplicativo está disponível online através do Streamlit Cloud.
 
-## Funcionalidades
+## 📁 Estrutura de Arquivos
 
-### Visualização de Dados
+```
+Streamlit_SIOUT/
+├── app.py                              # Aplicação principal
+├── RELATORIO_FINAL_SNISB_SIOUT.csv     # Dataset principal (preferencial)
+├── RELATORIO_FINAL_SNISB_SIOUT.xlsx    # Dataset alternativo (fallback)
+├── requirements.txt                     # Dependências Python
+├── image/
+│   └── app/
+│       ├── Logo.png                    # Favicon da aplicação
+│       └── LogoZetta.png               # Logo da Agência Zetta
+└── README.md                           # Este arquivo
+```
 
-- Tabela paginada com 50 registros por página
-- Código de cores por status de compatibilidade
-- Contador de registros filtrados
-- Exportação em múltiplos formatos (Excel, CSV, JSON)
+## ✨ Funcionalidades
 
-### Filtros Avançados
+### 📊 Visualização de Dados
 
-- **Período de cadastro**: Filtro por data inicial e final
-- **Situação Cadastro SNISB**: Seleção múltipla de status
+- **Tabela paginada** com 50 registros por página e navegação inteligente
+- **Código de cores** automático por status de compatibilidade
+- **Contador dinâmico** de registros filtrados vs. total
+- **Exportação em múltiplos formatos**: Excel (.xlsx), CSV (.csv), JSON (.json)
+- **Formatação responsiva** que se adapta ao tamanho da tela
+
+### 🔍 Filtros Avançados
+
+**Filtros de Data:**
+- **Período de cadastro**: Seleção de data inicial e final com calendário
+
+**Filtros de Características Físicas:**
+- **Situação Cadastro SNISB**: Status do registro (Selecionado, Descartado)
 - **Situação Massa D'água**: Compatibilidade com polígonos ANA
-- **Situação Comparação SIOUT**: Níveis de compatibilidade
-- **Código SNISB**: Busca por múltiplos códigos
+- **Situação Comparação SIOUT**: Níveis de compatibilidade entre sistemas
+- **Código SNISB**: Busca específica com autocompletar
 
-### Mapa Interativo
+**Filtros de Uso e Empreendedor:**
+- **Finalidade de Uso (SNISB)**: Irrigação, Dessedentação Animal, Industrial, etc.
+- **Tipo de Material**: Terra, Concreto, CCR
+- **Empreendedor**: Busca por proprietário/responsável
 
-- **Visualização geoespacial** com imagem de satélite Esri
-- **Marcadores coloridos** por status de compatibilidade
-- **Popups informativos** ao clicar nos pontos
-- **Legenda** com hierarquia de cores
-- **Zoom e navegação** fluida (sem reload)
+*Todos os filtros funcionam em conjunto (lógica AND)*
 
-### Ajuda e Glossário
+### 🗺️ Mapa Interativo
 
-- **Critérios de Elegibilidade**: Regras de seleção de cadastros
-- **Descrição das Colunas**: Detalhamento de todos os campos
-- **Situações e Status**: Significado de cada classificação
-- **Código de Cores**: Legenda da tabela
-- **FAQ**: Perguntas frequentes
+- **Visualização geoespacial** com imagem de satélite Esri em alta resolução
+- **Controle de camadas** interativo sem recarregamento da página:
+  - 🗺️ Polígonos ANA (massas d'água)
+  - 🔵 Pontos das Barragens
+- **Marcadores coloridos** por hierarquia de status:
+  - 🟢 Verde: Totalmente compatível
+  - 🟡 Amarelo: Parcialmente compatível
+  - 🟠 Laranja: Compatível geograficamente
+  - 🔴 Vermelho: Incompatível/Descartado
+  - 🔵 Azul: Selecionado para validação
+- **Popups informativos** ao clicar nos pontos com dados detalhados
+- **Polígonos ANA** com 45% de opacidade e otimização de geometria
+- **Legenda fixa** no canto inferior direito
+- **Spinner de carregamento** durante processamento
+- **Zoom e navegação** fluida preservando posição
 
-## Tecnologias Utilizadas
+### 📖 Ajuda e Glossário Completo
 
-- **Streamlit**: Framework para aplicações web
-- **Pandas**: Manipulação de dados
-- **Folium**: Mapas interativos
-- **streamlit-folium**: Integração Folium + Streamlit
+- **Critérios de Elegibilidade**: Regras de seleção e validação de cadastros
+- **Descrição das Colunas**: Detalhamento completo de todas as 23 colunas
+- **Situações e Status**: Significado de cada classificação (SNISB, Massa D'água, Comparação SIOUT)
+- **Código de Cores**: Legenda completa da tabela
+- **Filtros Disponíveis**: Explicação de cada tipo de filtro
+- **Dicas de Uso**: Guia passo a passo de como usar o sistema
+- **FAQ**: Perguntas frequentes com respostas detalhadas
+
+## 🛠️ Tecnologias Utilizadas
+
+- **Streamlit 1.32+**: Framework para aplicações web em Python
+- **Pandas 2.0+**: Manipulação e análise de dados
+- **Folium 0.14+**: Mapas interativos com Leaflet.js
+- **streamlit-folium 0.15+**: Integração Folium + Streamlit
+- **Shapely 2.0+**: Manipulação de geometrias espaciais
+- **Geopandas 0.14+**: Análise de dados geoespaciais
 - **OpenPyXL**: Leitura de arquivos Excel
-- **Python-dotenv**: Gerenciamento de variáveis de ambiente
+- **Python 3.11+**: Linguagem de programação
 
-## Dados
+## 📊 Dados
 
-- **Total de registros**: 4.698 barragens
-- **Colunas**: 18 campos incluindo geometria POINT
-- **Sistema de coordenadas**: SIRGAS 2000 (SRID 4674)
-- **Fonte**: Cruzamento SNISB + SIOUT + Polígonos ANA
+- **Total de registros**: 10.129 barragens
+- **Registros com polígonos ANA**: 9.642 (95,2%)
+- **Polígonos ANA únicos**: ~4.214 massas d'água
+- **Colunas**: 23 campos incluindo:
+  - Dados cadastrais (códigos, datas, autorizações)
+  - Dados técnicos (altura, capacidade, material)
+  - Dados espaciais (latitude, longitude, polígonos WKT)
+  - Dados de comparação (situações e compatibilidades)
+- **Sistema de coordenadas**: SIRGAS 2000 (EPSG:4674)
+- **Formato preferencial**: CSV (sem limite de caracteres)
+- **Formato alternativo**: Excel (polígonos complexos podem ser truncados)
 
-## Código de Cores
+## 🎨 Hierarquia de Cores
 
-- **Verde**: Totalmente compatível / Selecionado
-- **Amarelo**: Compatível parcialmente
-- **Laranja**: Compatível apenas geograficamente
-- **Vermelho escuro**: Incompatível
-- **Vermelho**: Descartado
+| Cor | Status | Significado |
+|-----|--------|-------------|
+| 🟢 Verde | Totalmente Compatível | Todos os campos conferem entre SNISB e SIOUT |
+| 🟡 Amarelo | Parcialmente Compatível | Alguns campos diferem |
+| 🟠 Laranja | Compatível Geograficamente | Mesma localização, dados divergentes |
+| 🔴 Vermelho Escuro | Incompatível | Sem correspondência entre sistemas |
+| 🔴 Vermelho | Descartado | Eliminado por duplicidade ou hierarquia |
+| 🔵 Azul | Selecionado | Aprovado para validação |
 
-## Observações
+## 💡 Observações Técnicas
 
-- Validação automática de coordenadas dentro do território brasileiro
-- Sistema de paginação com navegação inteligente
-- Filtros combinados com lógica AND (todos devem ser atendidos)
-- Multiselect com lógica OR dentro de cada filtro
+- ✅ Validação automática de coordenadas dentro do território brasileiro
+- ✅ Sistema de paginação inteligente com reticências
+- ✅ Filtros combinados com lógica AND (todos devem ser atendidos)
+- ✅ Multiselect com lógica OR dentro de cada filtro
+- ✅ Cache de dados para performance otimizada
+- ✅ Detecção e tratamento de polígonos truncados pelo Excel (32.767 caracteres)
+- ✅ Geometrias simplificadas automaticamente para melhor renderização
+- ✅ Controle de camadas do mapa sem recarregamento (JavaScript puro)
+
+## 🏢 Desenvolvido por
+
+**Agência Zetta - UFLA**
+
+[https://agenciazetta.ufla.br/](https://agenciazetta.ufla.br/)
+
+Agência de inovação, empreendedorismo e transferência de tecnologia da Universidade Federal de Lavras.
+
+## 📝 Licença
+
+Este projeto foi desenvolvido para uso institucional e análise de dados públicos de recursos hídricos.
