@@ -5,9 +5,10 @@ import folium
 from streamlit_folium import st_folium
 
 # Configuração da página
+logo_icon_path = os.path.join(os.path.dirname(__file__), "image", "app", "Logo.png")
 st.set_page_config(
     page_title="SIOUT-RS - Análise de Dados",
-    page_icon="🌊",
+    page_icon=logo_icon_path if os.path.exists(logo_icon_path) else "🌊",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -22,7 +23,11 @@ def carregar_dados():
     """Carrega o arquivo Excel e retorna um DataFrame"""
     try:
         arquivo_path = os.path.join(os.path.dirname(__file__), "RELATORIO_FINAL_SNISB_SIOUT.xlsx")
-        return pd.read_excel(arquivo_path)
+        # Configurar pandas para não truncar strings longas
+        pd.set_option('display.max_colwidth', None)
+        # Garantir que a coluna POLIGONO_ANA seja lida como string completa
+        df = pd.read_excel(arquivo_path, dtype={'POLIGONO_ANA': str})
+        return df
     except Exception as e:
         st.error(f"Erro ao carregar o arquivo: {e}")
         return None
@@ -476,6 +481,34 @@ if df is not None:
             st.markdown("<h3 style='text-align: center;'>Mapa de Localização</h3>", unsafe_allow_html=True)
             st.markdown("")
             
+            # Adicionar CSS para o spinner de carregamento
+            st.markdown("""
+            <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .loading-spinner {
+                text-align: center;
+                padding: 40px;
+            }
+            .loading-spinner::after {
+                content: "";
+                display: inline-block;
+                width: 40px;
+                height: 40px;
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #3498db;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Mostrar spinner de carregamento
+            loading_placeholder = st.empty()
+            loading_placeholder.markdown('<div class="loading-spinner"></div>', unsafe_allow_html=True)
+            
             # Verificar se existem colunas de latitude e longitude
             tem_coordenadas = 'LATITUDE' in df_filtrado.columns and 'LONGITUDE' in df_filtrado.columns
             
@@ -542,8 +575,16 @@ if df is not None:
                             
                             # Criar um único FeatureCollection para todos os polígonos (mais eficiente)
                             features = []
+                            poligonos_validos = 0
+                            poligonos_invalidos = 0
+                            
                             for poligono_wkt in poligonos_unicos:
                                 try:
+                                    # Verificar se o polígono está completo (termina com ))
+                                    if not str(poligono_wkt).endswith('))'):
+                                        poligonos_invalidos += 1
+                                        continue
+                                    
                                     # Converter WKT para geometria Shapely
                                     geom = wkt.loads(poligono_wkt)
                                     
@@ -557,8 +598,10 @@ if df is not None:
                                         "properties": {"tipo": "Polígono ANA"}
                                     }
                                     features.append(feature)
+                                    poligonos_validos += 1
                                 except Exception:
                                     # Ignorar polígonos com erro de parsing
+                                    poligonos_invalidos += 1
                                     continue
                             
                             # Adicionar todos os polígonos de uma vez como FeatureCollection
@@ -578,7 +621,7 @@ if df is not None:
                                         'interactive': False
                                     }
                                 ).add_to(grupo_poligonos)
-                    
+                            
                     # Adicionar grupo de polígonos ao mapa
                     grupo_poligonos.add_to(mapa)
                     
@@ -666,7 +709,8 @@ if df is not None:
                     """
                     mapa.get_root().html.add_child(folium.Element(legenda_html))
                     
-                    # Exibir mapa (sem captura de eventos para manter fluidez)
+                    # Remover spinner e exibir mapa
+                    loading_placeholder.empty()
                     st_folium(mapa, width=None, height=650, returned_objects=[])
                 else:
                     st.info("Nenhuma coordenada válida encontrada nos dados filtrados.")
@@ -883,3 +927,30 @@ if df is not None:
 
 else:
     st.error("Não foi possível carregar os dados. Verifique se o arquivo 'RELATORIO_FINAL_SNISB_SIOUT.xlsx' está na pasta correta.")
+
+# Rodapé com logo Zetta
+st.markdown("")
+
+# Carregar logo em base64
+import base64
+logo_path = os.path.join(os.path.dirname(__file__), "image", "app", "LogoZetta.png")
+if os.path.exists(logo_path):
+    with open(logo_path, "rb") as f:
+        img_data = base64.b64encode(f.read()).decode()
+    
+    # Rodapé centralizado com logo clicável
+    st.markdown(
+        f"""
+        <div style="text-align: center; padding: 10px 0 5px 0;">
+            <p style="margin: 0 0 5px 0; color: #666; font-size: 12px;">Desenvolvido por</p>
+            <a href="https://agenciazetta.ufla.br/" target="_blank">
+                <img src="data:image/png;base64,{img_data}" 
+                     style="width: 100px; background: transparent; cursor: pointer;" 
+                     alt="Agência Zetta">
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown("<p style='text-align: center; color: #666; font-size: 12px;'>Desenvolvido por Agência Zetta</p>", unsafe_allow_html=True)
